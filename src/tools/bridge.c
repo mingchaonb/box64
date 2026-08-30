@@ -67,16 +67,25 @@ uint64_t callback_track_counter_hz(void)
 #endif
 }
 
+static int callback_track_compare_ticks(const void* left, const void* right)
+{
+    uint64_t a = *(const uint64_t*)left;
+    uint64_t b = *(const uint64_t*)right;
+    return (a > b) - (a < b);
+}
+
 static uint64_t callback_track_counter_overhead(void)
 {
-    uint64_t best = UINT64_MAX;
-    for(int i = 0; i < 10000; ++i) {
+    uint64_t measurements[10001];
+    for(size_t i = 0; i < sizeof(measurements) / sizeof(measurements[0]); ++i) {
         uint64_t start = callback_track_counter();
         uint64_t end = callback_track_counter();
-        if(end - start < best)
-            best = end - start;
+        measurements[i] = end - start;
     }
-    return best;
+    qsort(measurements,
+          sizeof(measurements) / sizeof(measurements[0]),
+          sizeof(measurements[0]), callback_track_compare_ticks);
+    return measurements[sizeof(measurements) / sizeof(measurements[0]) / 2];
 }
 
 static double callback_track_ns(uint64_t ticks, uint64_t denominator,
