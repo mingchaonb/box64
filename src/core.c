@@ -636,8 +636,11 @@ void setupTrace()
 void endMallocHook();
 #endif
 
+#include "callback_track_bench.h"
+
 void endBox64()
 {
+    callback_track_bench_report();
     if(!my_context || box64_quit)
         return;
 

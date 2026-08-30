@@ -18,6 +18,7 @@
 #include "box64context.h"
 #include "elfloader.h"
 #include "alternate.h"
+#include "callback_track_bench.h"
 #ifdef DYNAREC
 #include "dynablock.h"
 #endif
@@ -26,6 +27,123 @@
 #endif
 
 KHASH_MAP_INIT_INT128(bridgemap, uintptr_t)
+
+callback_track_bench_t callback_track_bench;
+
+int callback_track_bench_enabled(void)
+{
+    static int enabled = -1;
+    if(enabled == -1) {
+        const char* value = getenv("BOX64_CALLBACK_TRACK_BENCH");
+        enabled = value && value[0] && strcmp(value, "0");
+    }
+    return enabled;
+}
+
+uint64_t callback_track_counter(void)
+{
+#if defined(__aarch64__)
+    uint64_t value;
+    __asm__ volatile("mrs %0, cntvct_el0" : "=r"(value));
+    return value;
+#elif defined(__x86_64__)
+    uint32_t low;
+    uint32_t high;
+    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+    return ((uint64_t)high << 32) | low;
+#else
+#error Unsupported callback benchmark architecture
+#endif
+}
+
+uint64_t callback_track_counter_hz(void)
+{
+#if defined(__aarch64__)
+    uint64_t value;
+    __asm__ volatile("mrs %0, cntfrq_el0" : "=r"(value));
+    return value;
+#elif defined(__x86_64__)
+    return 0;
+#endif
+}
+
+static uint64_t callback_track_counter_overhead(void)
+{
+    uint64_t best = UINT64_MAX;
+    for(int i = 0; i < 10000; ++i) {
+        uint64_t start = callback_track_counter();
+        uint64_t end = callback_track_counter();
+        if(end - start < best)
+            best = end - start;
+    }
+    return best;
+}
+
+static double callback_track_ns(uint64_t ticks, uint64_t denominator,
+                                uint64_t hz)
+{
+    if(!denominator || !hz)
+        return 0.0;
+    return (double)ticks * 1000000000.0 / (double)hz /
+           (double)denominator;
+}
+
+static double callback_track_calibrated_ns(uint64_t ticks,
+                                           uint64_t samples,
+                                           uint64_t overhead,
+                                           uint64_t hz)
+{
+    uint64_t correction = samples * overhead;
+    if(ticks <= correction)
+        return 0.0;
+    return callback_track_ns(ticks - correction, samples, hz);
+}
+
+void callback_track_bench_report(void)
+{
+    static int reported;
+    if(reported)
+        return;
+    reported = 1;
+    if(!callback_track_bench_enabled() || !callback_track_bench.samples)
+        return;
+
+    uint64_t hz = callback_track_counter_hz();
+    uint64_t overhead = callback_track_counter_overhead();
+    uint64_t samples = callback_track_bench.samples;
+    double guest = callback_track_calibrated_ns(
+        callback_track_bench.guest_elf_ticks, samples, overhead, hz);
+    double host = callback_track_calibrated_ns(
+        callback_track_bench.host_dladdr_ticks, samples, overhead, hz);
+    double protection = callback_track_calibrated_ns(
+        callback_track_bench.protection_ticks, samples, overhead, hz);
+    double got = callback_track_calibrated_ns(
+        callback_track_bench.got_ticks, samples, overhead, hz);
+    double wrapper = callback_track_calibrated_ns(
+        callback_track_bench.wrapper_ticks, samples, overhead, hz) /
+        (double)callback_track_bench.wrapper_checks;
+
+    fprintf(stderr,
+            "BOX64_CALLBACK_TRACK counter_hz=%llu samples=%llu "
+            "counter_overhead_ticks=%llu wrapper_checks=%llu\n",
+            (unsigned long long)hz,
+            (unsigned long long)samples,
+            (unsigned long long)overhead,
+            (unsigned long long)callback_track_bench.wrapper_checks);
+    fprintf(stderr,
+            "BOX64_CALLBACK_TRACK_TICKS guest_libs=%llu host_libs=%llu "
+            "protection=%llu got=%llu wrapper=%llu\n",
+            (unsigned long long)callback_track_bench.guest_elf_ticks,
+            (unsigned long long)callback_track_bench.host_dladdr_ticks,
+            (unsigned long long)callback_track_bench.protection_ticks,
+            (unsigned long long)callback_track_bench.got_ticks,
+            (unsigned long long)callback_track_bench.wrapper_ticks);
+    fprintf(stderr,
+            "BOX64_CALLBACK_TRACK_NS guest_libs=%.6f host_libs=%.6f "
+            "protection=%.6f got=%.6f wrapper=%.6f total=%.6f\n",
+            guest, host, protection, got, wrapper,
+            guest + host + protection + got + wrapper);
+}
 
 typedef struct brick_s brick_t;
 typedef struct brick_s {
@@ -208,6 +326,68 @@ uintptr_t AddAutomaticBridgeAlt(bridge_t* bridge, wrapper_t w, void* fnc, void* 
 void* GetNativeOrAlt(void* fnc, void* alt)
 {
     if(!fnc) return NULL;
+    if(callback_track_bench_enabled()) {
+        uint64_t start;
+        uint64_t end;
+
+        start = callback_track_counter();
+        elfheader_t* guest_elf = FindElfAddress(my_context, (uintptr_t)fnc);
+        end = callback_track_counter();
+        callback_track_bench.guest_elf_ticks += end - start;
+
+        if(!guest_elf) {
+            Dl_info info;
+            start = callback_track_counter();
+            int in_host = dladdr(fnc, &info);
+            end = callback_track_counter();
+            callback_track_bench.host_dladdr_ticks += end - start;
+            if(in_host)
+                return fnc;
+        }
+
+        start = callback_track_counter();
+        int protection = getProtection((uintptr_t)fnc);
+        end = callback_track_counter();
+        callback_track_bench.protection_ticks += end - start;
+        if(!protection)
+            return alt;
+
+        #define BENCH_PK(a)       *(uint8_t*)(fnc+a)
+        #define BENCH_PK32(a)     *(uint32_t*)(fnc+a)
+        start = callback_track_counter();
+        int is_got = BENCH_PK(0)==0xff && BENCH_PK(1)==0x25;
+        uintptr_t target = 0;
+        if(is_got) {
+            target = (uintptr_t)fnc + 6 + BENCH_PK32(2);
+            target = *(uintptr_t*)target;
+        }
+        end = callback_track_counter();
+        callback_track_bench.got_ticks += end - start;
+        #undef BENCH_PK
+        #undef BENCH_PK32
+        if(target && target > 0x10000) {
+            target = (uintptr_t)GetNativeFnc(target);
+            if(target)
+                return (void*)target;
+        }
+
+        volatile onebridge_t* bridge = (onebridge_t*)fnc;
+        const uint64_t checks = 1000;
+        volatile int is_wrapper = 0;
+        start = callback_track_counter();
+        for(uint64_t i = 0; i < checks; ++i) {
+            is_wrapper = bridge->CC == 0xCC && bridge->S == 'S' &&
+                         bridge->C == 'C' &&
+                         (bridge->C3 == 0xC3 || bridge->C3 == 0xC2);
+        }
+        end = callback_track_counter();
+        callback_track_bench.wrapper_ticks += end - start;
+        callback_track_bench.wrapper_checks = checks;
+        callback_track_bench.samples++;
+        if(!is_wrapper)
+            return alt;
+        return (void*)bridge->f;
+    }
     // check if function exist in some loaded lib
     if(!FindElfAddress(my_context, (uintptr_t)fnc)) {
         Dl_info info;

@@ -604,6 +604,7 @@ set(WRAPPEDS
     "${BOX64_ROOT}/src/wrapped/wrappedlibavformat58.c"
     "${BOX64_ROOT}/src/wrapped/wrappedlibavutil56.c"
     "${BOX64_ROOT}/src/wrapped/wrappedlibblas.c"
+    "${BOX64_ROOT}/src/wrapped/wrappedbreakdowntest.c"
     "${BOX64_ROOT}/src/wrapped/wrappedlibbsd.c"
     "${BOX64_ROOT}/src/wrapped/wrappedlibc.c"
     "${BOX64_ROOT}/src/wrapped/wrappedlibcmusl.c"

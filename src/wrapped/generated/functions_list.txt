@@ -3973,6 +3973,11 @@ wrappedavahicommon:
 - pFppA:
   - avahi_string_list_add_vprintf
 wrappedayatanaappindicator3:
+wrappedbreakdowntest:
+- iFp:
+  - breakdown_test_accept_callback
+- pFv:
+  - breakdown_test_get_callback
 wrappedbrotlidec:
 - pFppp:
   - BrotliDecoderCreateInstance
