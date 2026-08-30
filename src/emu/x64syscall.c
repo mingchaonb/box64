@@ -1,5 +1,6 @@
 #define _GNU_SOURCE         /* See feature_test_macros(7) */
 #include <stdint.h>
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +47,62 @@
 
 typedef struct x64_sigaction_s x64_sigaction_t;
 typedef struct x64_stack_s x64_stack_t;
+
+enum {
+    LORELEI_SYSCALL_NUMBER = 4096,
+    LORELEI_GET_HOST_ATTRIBUTE = 0,
+    LORELEI_LOAD_LIBRARY = 1,
+    LORELEI_GET_PROC_ADDRESS = 2,
+    LORELEI_FREE_LIBRARY = 3,
+    LORELEI_GET_LIBRARY_ERROR = 4,
+    LORELEI_INVOKE_PROC = 5,
+    LORELEI_RESUME_FUNCTION = 1,
+};
+
+static __thread int64_t lorelei_syscall_number = -1;
+
+EXPORT int64_t qemu_get_syscall_number(void)
+{
+    return lorelei_syscall_number;
+}
+
+static int lorelei_handle_call(uint64_t request, uint64_t a2, uint64_t a3, uint64_t a4)
+{
+    switch(request) {
+        case LORELEI_GET_HOST_ATTRIBUTE:
+            *(const char**)a3 = !strcmp((const char*)a2, "emu") ? "box64" : NULL;
+            return 1;
+        case LORELEI_LOAD_LIBRARY:
+            *(void**)a4 = dlopen((const char*)a2, (int)a3);
+            return 1;
+        case LORELEI_GET_PROC_ADDRESS:
+            *(void**)a4 = dlsym((void*)a2, (const char*)a3);
+            return 1;
+        case LORELEI_FREE_LIBRARY:
+            *(int*)a3 = dlclose((void*)a2);
+            return 1;
+        case LORELEI_GET_LIBRARY_ERROR:
+            *(const char**)a2 = dlerror();
+            return 1;
+        case LORELEI_INVOKE_PROC:
+            ((void (*)(void*, void*))a2)((void*)a3, (void*)a4);
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+EXPORT void qemu_lorelei_reentry(void)
+{
+    x64emu_t* emu = thread_get_emu_no_create();
+    if(!emu)
+        abort();
+    int old_quit = emu->quit;
+    R_RAX = 0;
+    emu->quit = 0;
+    DynaRun(emu);
+    emu->quit = old_quit;
+}
 
 extern int mkdir(const char *path, mode_t mode);
 extern int mknod(const char *path, mode_t mode, dev_t dev);
@@ -541,6 +598,19 @@ void EXPORT x64Syscall_linux(x64emu_t *emu)
 {
     RESET_FLAGS(emu);
     uint32_t s = R_EAX; // EAX? (syscalls only go up to 547 anyways)
+    if(s == LORELEI_SYSCALL_NUMBER) {
+        int64_t saved_syscall_number = lorelei_syscall_number;
+        lorelei_syscall_number = LORELEI_SYSCALL_NUMBER;
+        if(R_RDI == LORELEI_INVOKE_PROC && R_RDX == LORELEI_RESUME_FUNCTION) {
+            R_RAX = 0;
+            emu->quit = 1;
+            lorelei_syscall_number = saved_syscall_number;
+            return;
+        }
+        S_RAX = lorelei_handle_call(R_RDI, R_RSI, R_RDX, R_R10) ? 0 : -ENOSYS;
+        lorelei_syscall_number = saved_syscall_number;
+        return;
+    }
     int log = 0;
     char t_buff[256] = "\0";
     char t_buffret[128] = "\0";

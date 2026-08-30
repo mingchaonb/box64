@@ -3730,6 +3730,13 @@ static int pread_mmap(int fd, void* addr, size_t size, ssize_t offset)
 EXPORT void* my_mmap64(x64emu_t* emu, void *addr, size_t length, int prot, int flags, int fd, ssize_t offset)
 {
     (void)emu;
+    if(emu && (prot & PROT_EXEC) && (uintptr_t)addr >= 0x500000000000ULL) {
+        if(flags & (MAP_FIXED | MAP_FIXED_NOREPLACE)) {
+            errno = ENOMEM;
+            return MAP_FAILED;
+        }
+        addr = NULL;
+    }
     if(BOX64ENV(dynarec_log)>=LOG_DEBUG) {printf_log(LOG_NONE, "mmap64(%p, 0x%zx, 0x%x, 0x%x, %d, %zd) ", addr, length, prot, flags, fd, offset);}
 
     uintptr_t start = (uintptr_t)addr;
@@ -4067,6 +4074,12 @@ EXPORT int my_mprotect(x64emu_t* emu, void *addr, unsigned long len, int prot)
     last_mmap_0_len = 0;
     #endif
     (void)emu;
+    if(emu && (prot & PROT_EXEC) &&
+       ((uintptr_t)addr >= 0x500000000000ULL ||
+        len > 0x500000000000ULL - (uintptr_t)addr)) {
+        errno = ENOMEM;
+        return -1;
+    }
     if(emu && (BOX64ENV(log)>=LOG_DEBUG || BOX64ENV(dynarec_log)>=LOG_DEBUG)) {printf_log(LOG_NONE, "mprotect(%p, 0x%lx, 0x%x)\n", addr, len, prot);}
     if(prot&PROT_WRITE)
         prot|=PROT_READ;    // PROT_READ is implicit with PROT_WRITE on x86_64

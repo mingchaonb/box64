@@ -2953,6 +2953,7 @@ int memExist(uintptr_t addr)
 #define WINE_LOWEST (void*)0x30000000
 #define MEDIUM (void*)0x40000000
 #define HIGH   (void*)0x60000000
+#define HECATE_GUEST_ADDR_LIMIT 0x500000000000ULL
 
 // only track what brk added: re-tracking the whole heap would lose PROT_EXEC on
 // pages the guest made executable in it (like hook trampolines)
@@ -3010,7 +3011,7 @@ void* find47bitBlockNearHint(void* hint, size_t size, uintptr_t mask)
     if(hint<LOWEST) hint = LOWEST;
     uintptr_t cur = (uintptr_t)hint;
     if(!mask) mask = 0xffff;
-    if(rb_find_free_range(mapallmem, cur, 0x800000000000LL, size, mask, &cur))
+    if(rb_find_free_range(mapallmem, cur, HECATE_GUEST_ADDR_LIMIT, size, mask, &cur))
         return (void*)cur;
     return NULL;
 }
@@ -3018,7 +3019,7 @@ void* find47bitBlockElf(size_t size, int mainbin, uintptr_t mask)
 {
     static void* startingpoint = NULL;
     if(!startingpoint) {
-        startingpoint = (void*)(have48bits?0x7fff00000000LL:0x3f00000000LL);
+        startingpoint = (void*)(have48bits?0x4f0000000000LL:0x3f00000000LL);
     }
     void* mainaddr = (void*)0x100000000LL;
     void* ret = find47bitBlockNearHint(mainbin?mainaddr:startingpoint, size, mask);
@@ -3372,7 +3373,7 @@ void getLockAddressRange(uintptr_t start, size_t size, uintptr_t addrs[])
 #endif
 
 #ifndef NOALIGN
-#define BOX64_MMAP47_LIMIT (1ULL << 47)
+#define BOX64_MMAP47_LIMIT HECATE_GUEST_ADDR_LIMIT
 
 static int fits47Bits(void* addr, size_t length)
 {
