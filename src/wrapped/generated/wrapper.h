@@ -479,6 +479,7 @@ void pWpu(x64emu_t *emu, uintptr_t fnc);
 void vFEip(x64emu_t *emu, uintptr_t fnc);
 void vFEpi(x64emu_t *emu, uintptr_t fnc);
 void vFEpu(x64emu_t *emu, uintptr_t fnc);
+void vFEpL(x64emu_t *emu, uintptr_t fnc);
 void vFEpp(x64emu_t *emu, uintptr_t fnc);
 void vFEpV(x64emu_t *emu, uintptr_t fnc);
 void vFEpA(x64emu_t *emu, uintptr_t fnc);

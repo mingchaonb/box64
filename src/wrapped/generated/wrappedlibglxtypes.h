@@ -12,9 +12,11 @@
 #endif
 
 typedef void* (*pFp_t)(void*);
+typedef void (*vFpL_t)(void*, uintptr_t);
 
 #define SUPER() ADDED_FUNCTIONS() \
 	GO(glXGetProcAddress, pFp_t) \
-	GO(glXGetProcAddressARB, pFp_t)
+	GO(glXGetProcAddressARB, pFp_t) \
+	GO(glXSwapBuffers, vFpL_t)
 
 #endif // __wrappedlibglxTYPES_H_

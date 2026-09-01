@@ -442,6 +442,7 @@
 #() vFEip
 #() vFEpi
 #() vFEpu
+#() vFEpL
 #() vFEpp
 #() vFEpV
 #() vFEpA
@@ -5985,6 +5986,8 @@ wrappedlibgl:
   - glGetVkProcAddrNV
   - glXGetProcAddress
   - glXGetProcAddressARB
+- vFpL:
+  - glXSwapBuffers
 - vFpp:
   - glDebugMessageCallback
   - glDebugMessageCallbackAMD
@@ -6007,6 +6010,8 @@ wrappedlibglx:
 - pFp:
   - glXGetProcAddress
   - glXGetProcAddressARB
+- vFpL:
+  - glXSwapBuffers
 wrappedlibglxnvidia:
 - iFi:
   - glXSwapIntervalMESA
@@ -7089,6 +7094,8 @@ wrappedpulsemainloopglib:
   - pa_glib_mainloop_get_api
 wrappedpulsesimple:
 wrappedsdl1:
+- vFv:
+  - SDL_GL_SwapBuffers
 - vFp:
   - SDL_KillThread
   - SDL_SetEventFilter
@@ -7198,6 +7205,7 @@ wrappedsdl1ttf:
 wrappedsdl2:
 % G SDL_JoystickGUID UU
 - vFp:
+  - SDL_GL_SwapWindow
   - SDL_UnloadObject
 - iFv:
   - SDL_GetCPUCount
@@ -7219,6 +7227,7 @@ wrappedsdl2:
   - SDL_RemoveTimer
   - SDL_SaveAllDollarTemplates
 - IFp:
+  - SDL_RWsize
   - SDL_RWtell
 - uFp:
   - SDL_ReadBE16

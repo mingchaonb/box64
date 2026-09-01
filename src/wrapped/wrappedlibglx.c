@@ -25,6 +25,7 @@ const char* libglxName = "libGLX.so.0";
 #include "generated/wrappedlibglxtypes.h"
 
 #include "wrappercallback.h"
+#include "box64fps.h"
 
 #define SUPER() \
 GO(0)   \
@@ -34,6 +35,12 @@ GO(3)   \
 
 
 #undef SUPER
+
+EXPORT void myx_glXSwapBuffers(x64emu_t* emu, void* display, uintptr_t drawable)
+{
+    my->glXSwapBuffers(display, drawable);
+    box64_log_frame_presented();
+}
 
 EXPORT void* myx_glXGetProcAddress(x64emu_t* emu, void* name) 
 {

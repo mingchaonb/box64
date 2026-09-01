@@ -11,6 +11,7 @@
 #define ADDED_FUNCTIONS() 
 #endif
 
+typedef void (*vFv_t)(void);
 typedef void (*vFp_t)(void*);
 typedef int32_t (*iFv_t)(void);
 typedef int32_t (*iFp_t)(void*);
@@ -32,6 +33,7 @@ typedef void* (*pFupp_t)(uint32_t, void*, void*);
 typedef void* (*pFpippp_t)(void*, int32_t, void*, void*, void*);
 
 #define SUPER() ADDED_FUNCTIONS() \
+	GO(SDL_GL_SwapBuffers, vFv_t) \
 	GO(SDL_KillThread, vFp_t) \
 	GO(SDL_SetEventFilter, vFp_t) \
 	GO(SDL_UnloadObject, vFp_t) \

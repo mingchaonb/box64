@@ -100,6 +100,13 @@ typedef void  (*vFiupV_t)(int64_t, uint64_t, void*, va_list);
 #include "generated/wrappedsdl2types.h"
 
 #include "wrappercallback.h"
+#include "box64fps.h"
+
+EXPORT void my2_SDL_GL_SwapWindow(x64emu_t* emu, void* window)
+{
+    my->SDL_GL_SwapWindow(window);
+    box64_log_frame_presented();
+}
 
 #define SUPER() \
 GO(0)   \
@@ -466,6 +473,13 @@ EXPORT int64_t my2_SDL_RWtell(x64emu_t* emu, void* a)
 {
     SDL2_RWops_t *rw = RWNativeStart2(emu, (SDL2_RWops_t*)a);
     int64_t ret = RWNativeSeek2(rw, 0, 1);  //1 == RW_SEEK_CUR
+    RWNativeEnd2(rw);
+    return ret;
+}
+EXPORT int64_t my2_SDL_RWsize(x64emu_t* emu, void* a)
+{
+    SDL2_RWops_t *rw = RWNativeStart2(emu, (SDL2_RWops_t*)a);
+    int64_t ret = RWNativeSize2(rw);
     RWNativeEnd2(rw);
     return ret;
 }

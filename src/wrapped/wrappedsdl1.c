@@ -46,7 +46,7 @@ typedef struct {
   void *userdata;
 } SDL_AudioSpec;
 
-typedef void  (*vFv_t)();
+typedef void  (*vFv_t)(void);
 #define ADDED_FUNCTIONS() \
     GO(SDL_Quit, vFv_t)           \
     GO(SDL_AllocRW, sdl1_allocrw) \
@@ -58,6 +58,13 @@ typedef void  (*vFv_t)();
 #include "generated/wrappedsdl1types.h"
 
 #include "wrappercallback.h"
+#include "box64fps.h"
+
+EXPORT void my_SDL_GL_SwapBuffers(x64emu_t* emu)
+{
+    my->SDL_GL_SwapBuffers();
+    box64_log_frame_presented();
+}
 
 // event filter. Needs to be global, but there is only one, so that's should be fine
 x64emu_t        *sdl1_evtfilter = NULL;

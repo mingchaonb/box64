@@ -39,10 +39,9 @@ GO(glXQueryExtensionsString, pFpi)
 GO(glXQueryServerString, pFpii)
 GO(glXQueryVersion, iFppp)
 GO(glXSelectEvent, vFpLL)
-GO(glXSwapBuffers, vFpL)
+GOM(glXSwapBuffers, vFEpL)
 GO(glXUseXFont, vFLiii)
 GO(glXWaitGL, vFv)
 GO(glXWaitX, vFv)
-
 
 

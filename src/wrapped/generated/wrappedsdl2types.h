@@ -51,6 +51,7 @@ typedef uint32_t (*uFpippi_t)(void*, int32_t, void*, void*, int32_t);
 typedef void* (*pFpippp_t)(void*, int32_t, void*, void*, void*);
 
 #define SUPER() ADDED_FUNCTIONS() \
+	GO(SDL_GL_SwapWindow, vFp_t) \
 	GO(SDL_UnloadObject, vFp_t) \
 	GO(SDL_GetCPUCount, iFv_t) \
 	GO(SDL_Has3DNow, iFv_t) \
@@ -69,6 +70,7 @@ typedef void* (*pFpippp_t)(void*, int32_t, void*, void*, void*);
 	GO(SDL_RWclose, iFp_t) \
 	GO(SDL_RemoveTimer, iFp_t) \
 	GO(SDL_SaveAllDollarTemplates, iFp_t) \
+	GO(SDL_RWsize, IFp_t) \
 	GO(SDL_RWtell, IFp_t) \
 	GO(SDL_ReadBE16, uFp_t) \
 	GO(SDL_ReadBE32, uFp_t) \

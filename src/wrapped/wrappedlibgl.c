@@ -24,6 +24,13 @@ const char* libglName = "libGL.so.1";
 #include "generated/wrappedlibgltypes.h"
 
 #include "wrappercallback.h"
+#include "box64fps.h"
+
+EXPORT void my_glXSwapBuffers(x64emu_t* emu, void* display, uintptr_t drawable)
+{
+    my->glXSwapBuffers(display, drawable);
+    box64_log_frame_presented();
+}
 
 // FIXME: old wrapped* type of file, cannot use generated/wrappedlibgltypes.h
 

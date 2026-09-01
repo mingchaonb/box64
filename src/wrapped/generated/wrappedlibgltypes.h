@@ -13,6 +13,7 @@
 
 typedef int32_t (*iFu_t)(uint32_t);
 typedef void* (*pFp_t)(void*);
+typedef void (*vFpL_t)(void*, uintptr_t);
 typedef void (*vFpp_t)(void*, void*);
 typedef int32_t (*iFpp_t)(void*, void*);
 typedef void (*vFipp_t)(int32_t, void*, void*);
@@ -24,6 +25,7 @@ typedef void (*vFppp_t)(void*, void*, void*);
 	GO(glGetVkProcAddrNV, pFp_t) \
 	GO(glXGetProcAddress, pFp_t) \
 	GO(glXGetProcAddressARB, pFp_t) \
+	GO(glXSwapBuffers, vFpL_t) \
 	GO(glDebugMessageCallback, vFpp_t) \
 	GO(glDebugMessageCallbackAMD, vFpp_t) \
 	GO(glDebugMessageCallbackARB, vFpp_t) \
